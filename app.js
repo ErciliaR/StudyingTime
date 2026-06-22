@@ -231,6 +231,29 @@ function bindProfile() {
   if (b) b.onclick = () => { if (confirm("Clear all completion marks and the review queue?")) resetAll(); };
 }
 
+/* ---------------- option shuffling ---------------- */
+// Returns a copy of the question with options in random order. Re-letters A,B,C,D
+// sequentially UNLESS the explanation references option letters (then keeps original
+// letters so the explanation stays accurate). Either way the correct answer is no
+// longer pinned to the first position.
+function presentQuestion(q) {
+  const opts = q.options.slice();
+  for (let i = opts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [opts[i], opts[j]] = [opts[j], opts[i]];
+  }
+  // Detect references like "(C)", "(B, C)", " A)" or a standalone letter token.
+  const refsLetters = /(^|[\s(])[A-E]([\s,).])/.test(q.explanation || "");
+  if (refsLetters) return Object.assign({}, q, { options: opts }); // keep letters, shuffled order
+  const letters = ["A", "B", "C", "D", "E"];
+  let correct = q.correct;
+  const relettered = opts.map((o, i) => {
+    if (o.letter === q.correct) correct = letters[i];
+    return { letter: letters[i], text: o.text, correct: o.correct };
+  });
+  return Object.assign({}, q, { options: relettered, correct });
+}
+
 /* ---------------- session runner (lesson / exam / review) ---------------- */
 let sess = null, timerH = null;
 
@@ -238,21 +261,21 @@ function startLesson(id) {
   const l = flatLessons.find(x => x.id === id);
   if (!l) return;
   const steps = l.cards.map(c => ({ type: "card", data: c }))
-    .concat(l.questions.map(q => ({ type: "q", data: q })));
+    .concat(l.questions.map(q => ({ type: "q", data: presentQuestion(q) })));
   sess = { kind: "lesson", lesson: l, badge: l, steps, timeLimit: null,
     idx: 0, answered: false, selected: null, correct: 0, finished: false, remaining: 0 };
   openRunner();
 }
 function startExam() {
   const qs = [...C.bank].sort(() => Math.random() - 0.5).slice(0, EXAM_COUNT);
-  sess = { kind: "exam", title: "Mock Exam", steps: qs.map(q => ({ type: "q", data: q })),
+  sess = { kind: "exam", title: "Mock Exam", steps: qs.map(q => ({ type: "q", data: presentQuestion(q) })),
     timeLimit: EXAM_SECONDS, idx: 0, answered: false, selected: null, correct: 0, finished: false, remaining: EXAM_SECONDS };
   openRunner();
 }
 function startReview() {
   const qs = S.mistakes.map(id => qIndex[id]).filter(Boolean);
   if (!qs.length) return;
-  sess = { kind: "review", title: "Review", steps: qs.map(q => ({ type: "q", data: q })),
+  sess = { kind: "review", title: "Review", steps: qs.map(q => ({ type: "q", data: presentQuestion(q) })),
     timeLimit: null, idx: 0, answered: false, selected: null, correct: 0, finished: false, remaining: 0, clearedAtStart: S.mistakes.length };
   openRunner();
 }

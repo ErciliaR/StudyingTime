@@ -1,4 +1,4 @@
-const CACHE = "architect-v5";
+const CACHE = "architect-v6";
 const ASSETS = [
   "./", "index.html", "styles.css", "content.js", "app.js", "manifest.webmanifest",
   "icons/icon-192.png", "icons/icon-512.png", "icons/icon-180.png", "icons/icon-maskable-512.png",
